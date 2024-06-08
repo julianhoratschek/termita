@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <style>
+        #date-table td.display {
+            height: 48px;
+            width: 50%;
+            border: 2px solid #797979;
+            border-radius: 3px;
+
+            text-align: center;
+        }
+
+        .month-caption {
+            font-weight: bold;
+            font-size: 24pt;
+            background-color: cornflowerblue;
+        }
+
+        .saturday {
+            background-color: #797979;
+        }
+
+        .sunday {
+            background-color: #4c4c4c;
+        }
+
+        .today {
+            background-color: chocolate !important;
+        }
+
+        .changed {
+            background-color: #109a71;
+        }
+
+        .revisit {
+            background-color: #9a8c10;
+        }
+
+        .not-assigned {
+            background-color: #9a3940;
+            color: whitesmoke;
+        }
+
+        #doctor-selection select {
+            height: 48px;
+            width: 250px;
+            background-color: whitesmoke;
+            border: 2px solid #797979;
+
+            text-align: center;
+        }
+
+    </style>
+</head>
+<body>
+    <form id="doctor-selection">
+        <select id="doctor-selection-name" name="add_name">
+                <option value="none">Auswählen</option>
+            {% for doctor in doctors %}
+                <option value="{{ doctor|e }}">{{ doctor|e }}</option>
+            {% endfor %}
+        </select>
+        <input id="doctor-selection-date" name="date" value="" type="hidden" />
+    </form>
+
+    <table id="date-table">
+        {% for date in dates %}
+            {% if loop.previtem is not defined or loop.previtem.month != date.month %}
+                <tr>
+                    <td colspan="2" class="display month-caption">{{ date|dt("%B") }}</td>
+                </tr>
+            {% endif %}
+
+            <tr>
+                <td class="display date-column d{{ date|ord }} {{ date|weekday_class }}">{{ date|dt }}</td>
+                    {% if date|ord in entries %}
+                <td class="display name-column">
+                        {{ entries[date|ord] }}
+                    {% else %}
+                <td class="display name-column not-assigned">
+                        [Nicht vergeben]
+                    {% endif %}
+                </td>
+
+                <td></td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    <script type="text/javascript">
+        const doctor_select = document.getElementById("doctor-selection")
+        const current_name = document.getElementById("doctor-selection-name")
+        const current_date = document.getElementById("doctor-selection-date")
+        let current_column = null
+
+        function set_doctor(doctor_name) {
+            let local_column = current_column
+            let form_data = new FormData(doctor_select)
+
+            form_data.set("current_entry", local_column.innerText)
+
+            let request = new Request("add", {
+                method: "POST",
+                body: form_data
+            })
+
+            fetch(request)
+                .then((response) => {
+                    if(!response.ok)
+                        throw new Error("Could not reach server.")
+                    return response.text()
+                })
+                .then((response) => {
+                    if(response !== doctor_name)
+                        local_column.classList.add("revisit")
+                    else
+                        local_column.classList.add("changed")
+
+                    local_column.innerText = response
+                    local_column.classList.remove("not-assigned")
+                })
+        }
+
+        doctor_select.addEventListener("change", (event) => {
+            if(!current_column || event.target.value === "none")
+                return
+
+            set_doctor(event.target.value)
+        })
+
+        addEventListener("dblclick", (event) => {
+            if(event.target.classList.contains("name-column")) {
+                current_column = event.target
+
+                current_date.value = current_column.previousElementSibling.classList[2]
+                
+                if(current_column.classList.contains("not-assigned") && current_name.value !== "none")
+                    set_doctor(current_name.value)
+                else
+                    current_name.value = "none"
+
+                current_column.nextElementSibling.appendChild(doctor_select)
+            }
+        })
+
+        document.getElementsByClassName("today")[0].scrollIntoView()
+    </script>
+</body>
+
+</html>
