@@ -17,7 +17,7 @@ app = Flask(__name__)
 def init_db() -> sqlite3.Connection:
     """ Initialize the database. """
     if "db" not in g:
-        g.db = sqlite3.connect("database.sqlite")
+        g.db = sqlite3.connect("/var/data/database.sqlite")
 
     return g.db
 
