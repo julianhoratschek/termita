@@ -37,15 +37,15 @@ function set_doctor(set_method="append") {
             // If we get another name back, the cell was edited by someone else before our send-reqeust
             local_column.classList.remove("not-assigned")
 
-            // Signal changes were made in the meantime
-            if(response !== current_name.value)
-                local_column.classList.add("revisit")
-
             // Display correct text when entry was deleted
-            else if(response === "empty") {
+            if(response === "empty") {
                 local_column.classList.add("not-assigned")
                 response = "[Nicht vergeben]"
             }
+
+            // Signal changes were made in the meantime
+            else if(response !== current_name.value)
+                local_column.classList.add("revisit")
 
             // Show success
             else
@@ -59,6 +59,8 @@ function set_doctor(set_method="append") {
  * Display entries in date-table.
  */
 function load_content() {
+
+    // Get information about year to display and optional name filters
     let form_data = new FormData(ui_bar)
     let request = new Request("/filter", {
         method: "POST",
@@ -78,16 +80,25 @@ function load_content() {
         .then((html) => {
             date_table.innerHTML = html
 
+            // Scroll to display current date, if in table
             let today = document.getElementsByClassName("today")
             if(today.length > 0)
                 today[0].scrollIntoView()
         })
 }
 
+/**
+ * Global listener for mouse clicks, acts only when table cells were selected. Fires set_doctor or relocates
+ * Doctor-Select next to the selected cell.
+ * @param event
+ */
 function on_cell_click(event) {
+
+    // Don't do anything, if no name-cell was selected
     if(!event.target.classList.contains("name-cell"))
         return
 
+    // Set current cell
     current_column = event.target
 
     // If nothing is assigned to this cell, update using the last selected name
@@ -104,34 +115,58 @@ function on_cell_click(event) {
     current_column.nextElementSibling.appendChild(doctor_select)
 }
 
+
 // Main
 
+// Setup event listeners
+
+
+// Listen for Changes on Doctor-Select
 doctor_select.addEventListener("change", (event) => {
+
+    // Don't act if nothing is selected
     if(!current_column || event.target.value === "none")
         return
 
+    // If nothing was assigned before, fill in the selected name
     if(current_column.classList.contains("not-assigned"))
         set_doctor("replace")
+
+    // Send delete-Request
     else if(event.target.value === "delete")
         set_doctor("delete")
+
+    // If something was assigned to the current date, prompt user to inquire further action
     else
         replace_dialog.showModal()
 
 })
 
+
+// Listen to changes in the doctor-filter Select
 ui_bar.addEventListener("change", (event) => {
     load_content()
 })
 
+
+// Listen for Replace-Dialog closing
 replace_dialog.addEventListener("close", (event) => {
+
+    // Only act if a valid option was supplied
     if(["replace", "append"].includes(replace_dialog.returnValue))
         set_doctor(replace_dialog.returnValue)
 
+    // Reset Dialog for next use
     replace_dialog.returnValue = ""
 })
 
+
+// Global listener for Mouse clicks
 date_table.addEventListener("click", on_cell_click)
 
+// Display current year
 document.getElementById("year-filter").value = new Date(Date.now()).getFullYear()
+
+// Load page content
 load_content()
 

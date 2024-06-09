@@ -4,8 +4,6 @@ from markupsafe import escape
 from datetime import date, timedelta
 from itertools import groupby
 
-# TODO: "empty"
-# TODO: Deutsch
 # TODO: Feiertage
 
 
@@ -74,7 +72,9 @@ def date_to_string(value: date) -> str:
 
 @app.template_filter("ord")
 def date_to_ord(value: date) -> int:
-    """ Jinja template filter to convert a date to an ordinal. """
+    """ Jinja template filter to convert a date to an ordinal.
+    """
+
     return value.toordinal()
 
 
@@ -137,21 +137,6 @@ def get_filter():
                            entries=entries)
 
 
-@app.route('/')
-def get_main():
-    """ Displays main view. Table content will be loaded via fetch from client side."""
-
-    # Initialize Database
-    db: sqlite3.Connection = init_db()
-
-    # Get all registered users of the calendar
-    doctors: list[str] = [name[0] for name in db.execute("SELECT `last_name` FROM doctors ORDER BY `last_name`")
-                                                .fetchall()]
-
-    return render_template("time_table.html",
-                           doctors=doctors)
-
-
 @app.post('/set')
 def set_entry():
     """ Adds, overwrites or deletes an entry in the calendar. If the entry was modified in the meantime,
@@ -202,6 +187,21 @@ def set_entry():
         return escape(", ".join(entries[0]))
 
     return "empty"
+
+
+@app.route('/')
+def get_main():
+    """ Displays main view. Table content will be loaded via fetch from client side."""
+
+    # Initialize Database
+    db: sqlite3.Connection = init_db()
+
+    # Get all registered users of the calendar
+    doctors: list[str] = [name[0] for name in db.execute("SELECT `last_name` FROM doctors ORDER BY `last_name`")
+                                                .fetchall()]
+
+    return render_template("time_table.html",
+                           doctors=doctors)
 
 
 if __name__ == '__main__':
