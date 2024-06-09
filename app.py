@@ -88,16 +88,6 @@ def get_weekday_class(value: date) -> str:
     }.get(value.weekday(), "weekday") + (" today" if value == date.today() else "")
 
 
-@app.route("/create_db")
-def create_db():
-    db: sqlite3.Connection = init_db()
-
-    with app.open_resource("schema.sql", mode="r") as f:
-        db.executescript(f.read())
-
-    return "Database created"
-
-
 @app.post('/filter')
 def get_filter():
     """Get entries for a specified year, optionally filtered by a doctor name.

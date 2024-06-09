@@ -10,19 +10,21 @@ const date_table = document.getElementById("date-table")
 let current_column = null
 
 
-// Send from data from "doctor-selection" and updates database
-// TODO: multiple-entries: remove and append
+/**
+ * Send from data from "doctor-selection" and updates database
+ */
 function set_doctor(set_method="append") {
+    // TODO: multiple-entries: remove and append
     // Ensure we keep working on the same cell
-    let local_column = current_column
-    let form_data = new FormData(doctor_select)
+    const local_column = current_column
+    const form_data = new FormData(doctor_select)
 
     // Append the content we expect to override.
     form_data.set("date", local_column.previousElementSibling.classList[2])
     form_data.set("current_entry", local_column.innerText)
     form_data.set("set_method", set_method)
 
-    let request = new Request("set", {
+    const request = new Request("set", {
         method: "POST",
         body: form_data
     })
@@ -35,7 +37,6 @@ function set_doctor(set_method="append") {
         })
 
         .then((response) => {
-            // If we get another name back, the cell was edited by someone else before our send-reqeust
             local_column.classList.remove("not-assigned", "revisit", "changed")
 
             // Display correct text when entry was deleted
@@ -44,7 +45,7 @@ function set_doctor(set_method="append") {
                 response = "[Nicht vergeben]"
             }
 
-            // Signal changes were made in the meantime
+            // If we get another name back, the cell was edited by someone else before our send-reqeust
             else if(response !== current_name.value)
                 local_column.classList.add("revisit")
 
@@ -62,8 +63,8 @@ function set_doctor(set_method="append") {
 function load_content() {
 
     // Get information about year to display and optional name filters
-    let form_data = new FormData(ui_bar)
-    let request = new Request("/filter", {
+    const form_data = new FormData(ui_bar)
+    const request = new Request("/filter", {
         method: "POST",
         body: form_data
     })
@@ -82,7 +83,7 @@ function load_content() {
             date_table.innerHTML = html
 
             // Scroll to display current date, if in table
-            let today = document.getElementsByClassName("today")
+            const today = document.getElementsByClassName("today")
             if(today.length > 0)
                 today[0].scrollIntoView()
         })
