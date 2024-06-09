@@ -2,10 +2,15 @@ import sqlite3
 from flask import Flask, request, render_template, g
 from markupsafe import escape
 from datetime import date, timedelta
+import locale
+
+# TODO: Terminalternativen
+# TODO: Feiertage
 
 
 # Initialize App
 app = Flask(__name__)
+locale.setlocale(locale.LC_TIME, 'de_DE')
 
 
 def init_db() -> sqlite3.Connection:
@@ -29,7 +34,7 @@ def close_db(error):
 
 
 @app.template_filter("dt")
-def date_to_string(value: date, date_format: str = "%d.%m.%Y") -> str:
+def date_to_string(value: date, date_format: str = "%a, %d. %B") -> str:
     """ Jinja template filter to convert a date to a string. """
     return value.strftime(date_format)
 
