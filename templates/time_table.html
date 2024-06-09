@@ -42,8 +42,16 @@
                 <option value="{{ doctor|e }}">{{ doctor|e }}</option>
             {% endfor %}
         </select>
-        <input id="doctor-selection-date" name="date" value="" type="hidden" />
     </form>
+
+    <dialog id="replace-dialog">
+        <form method="dialog">
+            <p>Der Termin ist bereits vergeben, wie soll vorgegangen werden?</p>
+            <button value="replace">Ersetzen</button>
+            <button value="append">Hinzufügen</button>
+            <button value="cancel" autofocus>Abbrechen</button>
+        </form>
+    </dialog>
 
     <script type="text/javascript" src="{{ url_for("static", filename="js/main.js") }}"></script>
 </body>

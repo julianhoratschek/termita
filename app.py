@@ -2,6 +2,7 @@ import sqlite3
 from flask import Flask, request, render_template, g
 from markupsafe import escape
 from datetime import date, timedelta
+from itertools import groupby
 import locale
 
 # TODO: Terminalternativen
@@ -21,8 +22,9 @@ def init_db() -> sqlite3.Connection:
     return g.db
 
 
-def get_date_entries(db, sql_query, params) -> dict[int, str]:
-    return {date_ord: doctor_name for date_ord, doctor_name in db.execute(sql_query, params).fetchall()}
+def get_date_entries(sql_query, params) -> dict[int, str]:
+    return {date_ord: ", ".join(list(zip(*doctor_names))[1]) for date_ord, doctor_names
+            in groupby(g.db.execute(sql_query, params).fetchall(), lambda x: x[0])}
 
 
 @app.teardown_appcontext
@@ -71,7 +73,7 @@ def get_filter():
     """
 
     # Connect to the Database
-    db: sqlite3.Connection = init_db()
+    init_db()
 
     # Get POST-Request: year and optional filter name
     year: int = request.form.get("year", default=date.today().year, type=int)
@@ -84,17 +86,17 @@ def get_filter():
 
     # If all entries should be selected, get entries and fill date list with each day of the year
     if doctor_filter == "all":
-        entries: dict[int, str] = get_date_entries(db,
-                                                   "SELECT `date`, `doctor` FROM time_table "
-                                                   "WHERE `date` >= ? AND `date` <= ?  ORDER BY `date`",
+        entries: dict[int, str] = get_date_entries("SELECT `date`, `doctor` FROM time_table "
+                                                   "WHERE `date` BETWEEN ? AND ?  "
+                                                   "ORDER BY `date`, `doctor`",
                                                    (start_date.toordinal(), end_date.toordinal()))
         dates: list[date] = [start_date + timedelta(days=delta) for delta in range(0, 366)]
 
     # Otherwise get filtered entries and fill date list only with necessary days
     else:
-        entries: dict[int, str] = get_date_entries(db,
-                                                   "SELECT `date`, `doctor` FROM time_table "
-                                                   "WHERE `date` >= ? AND `date` <= ? AND `doctor` = ? ORDER BY `date`",
+        entries: dict[int, str] = get_date_entries("SELECT `date`, `doctor` FROM time_table "
+                                                   "WHERE `date` BETWEEN ? AND ? AND `doctor` = ? "
+                                                   "ORDER BY `date`, `doctor`",
                                                    (start_date.toordinal(), end_date.toordinal(), doctor_filter))
         dates: list[date] = [date.fromordinal(entry) for entry in entries.keys()]
 
@@ -134,42 +136,41 @@ def set_entry():
     try:
         current_entry: str = request.form["current_entry"]
         write_entry: str = request.form["add_name"]
+        set_method: str = request.form["set_method"]
         at_date: int = int(request.form["date"][1:])
 
     except (ValueError, KeyError) as e:
         return escape(str(e))
 
+    # Try to get a calendar entry at the selected date
+    entries: list[str] = list(zip(*db.execute("SELECT `doctor` FROM time_table "
+                                              "WHERE `date` = ? ORDER BY `doctor`", (at_date,))
+                                     .fetchall()))
+
+    if entries and (match_names := ", ".join(entries[0])) != current_entry:
+        return escape(match_names)
+
     # If deletion was selected, try to delete the specified entry
-    if write_entry == "delete":
+    if set_method in ("delete", "replace"):
         db.execute("DELETE FROM time_table "
-                   "WHERE `date` = ? AND `doctor` = ?",
-                   (at_date, current_entry))
+                   "WHERE `date` = ?",
+                   (at_date,))
 
-    # Otherwise insert or update table
-    else:
-        # Try to get a calendar entry at the selected date
-        entries = db.execute("SELECT `doctor`, `id` FROM time_table "
-                             "WHERE `date` = ? LIMIT 1", (at_date,))\
-                    .fetchone()
-
-        # If any entry was present
-        if entries:
-            # If the entries name differs from the expected value to overwrite, abort query.
-            if current_entry != entries[0]:
-                return escape(entries[0])
-
-            # Otherwise overwrite entry
-            db.execute("UPDATE time_table SET `doctor` = ? WHERE `id` = ?",
-                       (write_entry, entries[1]))
-
-        # If no calendar entry was present, create new entry
-        else:
-            db.execute("INSERT INTO time_table (`date`, `doctor`) VALUES (?, ?)",
-                       (at_date, write_entry))
+    if set_method in ("append", "replace"):
+        # TODO: fail?
+        db.execute("INSERT INTO time_table (`date`, `doctor`) VALUES (?, ?)",
+                   (at_date, write_entry))
 
     # Commit changes
     db.commit()
-    return escape(write_entry)
+
+    entries = list(zip(*db.execute("SELECT `doctor` FROM time_table "
+                                   "WHERE `date` = ? ORDER BY `doctor`", (at_date,))
+                          .fetchall()))
+    if entries:
+        return escape(", ".join(entries[0]))
+
+    return "empty"
 
 
 if __name__ == '__main__':

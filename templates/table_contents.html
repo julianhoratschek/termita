@@ -9,7 +9,7 @@
         <td class="display date-column d{{ date|ord }} {{ date|weekday_class }}">{{ date|dt }}</td>
 
         {% if date|ord in entries %}
-            <td class="display name-cell">
+            <td class="display name-cell{% if "," in entries[date|ord] %} multiple-entries{% endif %}">
                 {{ entries[date|ord] }}
             </td>
         {% else %}

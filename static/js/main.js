@@ -2,7 +2,8 @@
 const doctor_select = document.getElementById("doctor-selection")
 const ui_bar = document.getElementById("ui-bar")
 const current_name = document.getElementById("doctor-selection-name")
-const current_date = document.getElementById("doctor-selection-date")
+
+const replace_dialog = document.getElementById("replace-dialog")
 const date_table = document.getElementById("date-table")
 
 // Setup mutable elements
@@ -10,13 +11,15 @@ let current_column = null
 
 
 // Send from data from "doctor-selection" and updates database
-function set_doctor(doctor_name) {
+function set_doctor(set_method="append") {
     // Ensure we keep working on the same cell
     let local_column = current_column
     let form_data = new FormData(doctor_select)
 
     // Append the content we expect to override.
+    form_data.set("date", local_column.previousElementSibling.classList[2])
     form_data.set("current_entry", local_column.innerText)
+    form_data.set("set_method", set_method)
 
     let request = new Request("set", {
         method: "POST",
@@ -35,11 +38,11 @@ function set_doctor(doctor_name) {
             local_column.classList.remove("not-assigned")
 
             // Signal changes were made in the meantime
-            if(response !== doctor_name)
+            if(response !== current_name.value)
                 local_column.classList.add("revisit")
 
             // Display correct text when entry was deleted
-            else if(response === "delete") {
+            else if(response === "empty") {
                 local_column.classList.add("not-assigned")
                 response = "[Nicht vergeben]"
             }
@@ -86,13 +89,12 @@ function on_cell_click(event) {
         return
 
     current_column = event.target
-    current_date.value = current_column.previousElementSibling.classList[2]
 
     // If nothing is assigned to this cell, update using the last selected name
     if (current_column.classList.contains("not-assigned")
         && current_name.value !== "none"
         && current_name.value !== "delete")
-        set_doctor(current_name.value)
+        set_doctor("replace")
 
     // Otherwise reset select-element
     else
@@ -108,11 +110,24 @@ doctor_select.addEventListener("change", (event) => {
     if(!current_column || event.target.value === "none")
         return
 
-    set_doctor(event.target.value)
+    if(current_column.classList.contains("not-assigned"))
+        set_doctor("replace")
+    else if(event.target.value === "delete")
+        set_doctor("delete")
+    else
+        replace_dialog.showModal()
+
 })
 
 ui_bar.addEventListener("change", (event) => {
     load_content()
+})
+
+replace_dialog.addEventListener("close", (event) => {
+    if(["replace", "append"].includes(replace_dialog.returnValue))
+        set_doctor(replace_dialog.returnValue)
+
+    replace_dialog.returnValue = ""
 })
 
 date_table.addEventListener("click", on_cell_click)

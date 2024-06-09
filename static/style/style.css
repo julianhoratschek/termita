@@ -39,7 +39,11 @@ select {
 }
 
 .revisit {
-    background-color: #9a8c10;
+    background-color: #d1c438;
+}
+
+.multiple-entries {
+    background-color: #d1c438;;
 }
 
 .not-assigned {
@@ -76,4 +80,14 @@ td #doctor-selection {
 
     padding: 20px;
 
+}
+
+#replace-dialog p {
+    text-align: center;
+}
+
+#replace-dialog button {
+    width: 200px;
+    height: 48px;
+    background-color: whitesmoke;
 }
