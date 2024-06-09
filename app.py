@@ -163,28 +163,28 @@ def set_entry():
                                               "WHERE `date` = ? ORDER BY `doctor`", (at_date,))
                                      .fetchall()))
 
+    # Abort if current database state does not match expected state
     if entries and (match_names := ", ".join(entries[0])) != current_entry:
         return escape(match_names)
 
     # If deletion was selected, try to delete the specified entry
     if set_method in ("delete", "replace"):
+        entries = []
         db.execute("DELETE FROM time_table "
                    "WHERE `date` = ?",
                    (at_date,))
 
+    # If insertion was selected, insert new data
     if set_method in ("append", "replace"):
-        # TODO: fail?
+        entries.append(write_entry)
         db.execute("INSERT INTO time_table (`date`, `doctor`) VALUES (?, ?)",
                    (at_date, write_entry))
 
     # Commit changes
     db.commit()
 
-    entries = list(zip(*db.execute("SELECT `doctor` FROM time_table "
-                                   "WHERE `date` = ? ORDER BY `doctor`", (at_date,))
-                          .fetchall()))
     if entries:
-        return escape(", ".join(entries[0]))
+        return escape(", ".join(sorted(entries)))
 
     return "empty"
 
