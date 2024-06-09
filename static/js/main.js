@@ -34,12 +34,17 @@ function set_doctor(doctor_name) {
             // If we get another name back, the cell was edited by someone else before our send-reqeust
             local_column.classList.remove("not-assigned")
 
+            // Signal changes were made in the meantime
             if(response !== doctor_name)
                 local_column.classList.add("revisit")
+
+            // Display correct text when entry was deleted
             else if(response === "delete") {
                 local_column.classList.add("not-assigned")
                 response = "[Nicht vergeben]"
             }
+
+            // Show success
             else
                 local_column.classList.add("changed")
 
@@ -47,6 +52,9 @@ function set_doctor(doctor_name) {
         })
 }
 
+/**
+ * Display entries in date-table.
+ */
 function load_content() {
     let form_data = new FormData(ui_bar)
     let request = new Request("/filter", {

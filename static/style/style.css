@@ -10,7 +10,7 @@ select {
 #date-table td.display {
     height: 48px;
     width: 50%;
-    border: 2px solid #797979;
+    border: 2px solid #8599bd;
     border-radius: 3px;
 
     text-align: center;
@@ -19,19 +19,19 @@ select {
 .month-caption {
     font-weight: bold;
     font-size: 24pt;
-    background-color: cornflowerblue;
+    background-color: #8599bd;
 }
 
 .saturday {
-    background-color: #797979;
+    background-color: #aabcdd;
 }
 
 .sunday {
-    background-color: #4c4c4c;
+    background-color: #8599bd;
 }
 
 .today {
-    background-color: chocolate !important;
+    background-color: #ffa500 !important;
 }
 
 .changed {
@@ -43,7 +43,8 @@ select {
 }
 
 .not-assigned {
-    background-color: #9a3940;
+    background-color: #a6363e;
+    border-color: #a6363e;
     color: whitesmoke;
 }
 
@@ -71,7 +72,7 @@ td #doctor-selection {
     height: 80px;
 
     opacity: 0.8;
-    background-color: lightsteelblue;
+    background-color: #aabcdd;
 
     padding: 20px;
 

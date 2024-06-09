@@ -16,6 +16,10 @@ def init_db() -> sqlite3.Connection:
     return g.db
 
 
+def get_date_entries(db, sql_query, params) -> dict[int, str]:
+    return {date_ord: doctor_name for date_ord, doctor_name in db.execute(sql_query, params).fetchall()}
+
+
 @app.teardown_appcontext
 def close_db(error):
     """ Close the database again at the end of the request. """
@@ -46,6 +50,16 @@ def get_weekday_class(value: date) -> str:
     }.get(value.weekday(), "weekday") + (" today" if value == date.today() else "")
 
 
+@app.route("/create_db")
+def create_db():
+    db: sqlite3.Connection = init_db()
+
+    with app.open_resource("schema.sql", mode="r") as f:
+        db.executescript(f.read())
+
+    return "Database created"
+
+
 @app.post('/filter')
 def get_filter():
     """Get entries for a specified year, optionally filtered by a doctor name.
@@ -65,21 +79,18 @@ def get_filter():
 
     # If all entries should be selected, get entries and fill date list with each day of the year
     if doctor_filter == "all":
-        results = db.execute("SELECT `date`, `doctor` FROM time_table "
-                             "WHERE `date` >= ? AND `date` <= ?  ORDER BY `date`",
-                             (start_date.toordinal(), end_date.toordinal())) \
-            .fetchall()
-
-        entries = {date_ord: doctor_name for date_ord, doctor_name in results}
+        entries: dict[int, str] = get_date_entries(db,
+                                                   "SELECT `date`, `doctor` FROM time_table "
+                                                   "WHERE `date` >= ? AND `date` <= ?  ORDER BY `date`",
+                                                   (start_date.toordinal(), end_date.toordinal()))
         dates: list[date] = [start_date + timedelta(days=delta) for delta in range(0, 366)]
 
     # Otherwise get filtered entries and fill date list only with necessary days
     else:
-        results = db.execute("SELECT `date`, `doctor` FROM time_table "
-                             "WHERE `date` >= ? AND `date` <= ? AND `doctor` = ? ORDER BY `date`",
-                             (start_date.toordinal(), end_date.toordinal(), doctor_filter)) \
-            .fetchall()
-        entries = {date_ord: doctor_name for date_ord, doctor_name in results}
+        entries: dict[int, str] = get_date_entries(db,
+                                                   "SELECT `date`, `doctor` FROM time_table "
+                                                   "WHERE `date` >= ? AND `date` <= ? AND `doctor` = ? ORDER BY `date`",
+                                                   (start_date.toordinal(), end_date.toordinal(), doctor_filter))
         dates: list[date] = [date.fromordinal(entry) for entry in entries.keys()]
 
     # Render template
@@ -96,7 +107,8 @@ def get_main():
     db: sqlite3.Connection = init_db()
 
     # Get all registered users of the calendar
-    doctors = [name[0] for name in db.execute("SELECT `last_name` FROM doctors ORDER BY `last_name`").fetchall()]
+    doctors: list[str] = [name[0] for name in db.execute("SELECT `last_name` FROM doctors ORDER BY `last_name`")
+                                                .fetchall()]
 
     return render_template("time_table.html",
                            doctors=doctors)
@@ -104,8 +116,11 @@ def get_main():
 
 @app.post('/set')
 def set_entry():
-    """ Adds or overwrites an entry in the calendar. If the entry was modified in the meantime, nothing will
-    happen and a warning will be returned."""
+    """ Adds, overwrites or deletes an entry in the calendar. If the entry was modified in the meantime,
+    nothing will happen and the updated name will be returned.
+
+    :return: Escaped String of the inserted name. If the name was updated before this method was called,
+    the new name will be returned."""
 
     # Initialize Database
     db: sqlite3.Connection = init_db()
@@ -114,9 +129,9 @@ def set_entry():
     try:
         current_entry: str = request.form["current_entry"]
         write_entry: str = request.form["add_name"]
-        at_date: int = int(request.form.get('date', type=str)[1:])
+        at_date: int = int(request.form["date"][1:])
 
-    except (ValueError, KeyError, TypeError) as e:
+    except (ValueError, KeyError) as e:
         return escape(str(e))
 
     # If deletion was selected, try to delete the specified entry
@@ -132,8 +147,9 @@ def set_entry():
                              "WHERE `date` = ? LIMIT 1", (at_date,))\
                     .fetchone()
 
-        # If there was an entry, and it differs from the client-side entry, abort function
+        # If any entry was present
         if entries:
+            # If the entries name differs from the expected value to overwrite, abort query.
             if current_entry != entries[0]:
                 return escape(entries[0])
 
