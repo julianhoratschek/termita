@@ -11,6 +11,7 @@ let current_column = null
 
 
 // Send from data from "doctor-selection" and updates database
+// TODO: multiple-entries: remove and append
 function set_doctor(set_method="append") {
     // Ensure we keep working on the same cell
     let local_column = current_column
@@ -35,7 +36,7 @@ function set_doctor(set_method="append") {
 
         .then((response) => {
             // If we get another name back, the cell was edited by someone else before our send-reqeust
-            local_column.classList.remove("not-assigned")
+            local_column.classList.remove("not-assigned", "revisit", "changed")
 
             // Display correct text when entry was deleted
             if(response === "empty") {

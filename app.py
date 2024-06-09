@@ -159,13 +159,17 @@ def set_entry():
         return escape(str(e))
 
     # Try to get a calendar entry at the selected date
-    entries: list[str] = list(zip(*db.execute("SELECT `doctor` FROM time_table "
-                                              "WHERE `date` = ? ORDER BY `doctor`", (at_date,))
-                                     .fetchall()))
+    entries: list[str] = []
+    result: list = db.execute("SELECT `doctor` FROM time_table "
+                              "WHERE `date` = ? ORDER BY `doctor`", (at_date,))\
+                     .fetchall()
 
     # Abort if current database state does not match expected state
-    if entries and (match_names := ", ".join(entries[0])) != current_entry:
-        return escape(match_names)
+    if result:
+        entries = list(next(zip(*result)))
+
+        if (match_names := ", ".join(entries)) != current_entry:
+            return escape(match_names)
 
     # If deletion was selected, try to delete the specified entry
     if set_method in ("delete", "replace"):
