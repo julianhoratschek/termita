@@ -48,55 +48,52 @@ def get_weekday_class(value: date) -> str:
 
 @app.post('/filter')
 def get_filter():
+    """Get entries for a specified year, optionally filtered by a doctor name.
+    """
+
+    # Connect to the Database
     db: sqlite3.Connection = init_db()
 
+    # Get POST-Request: year and optional filter name
     year: int = request.form.get("year", default=date.today().year, type=int)
     doctor_filter: str = request.form.get("filter_name", default="*", type=str)
 
+    # Get range of dates to display (default: full year)
+    # TODO: Filter by Month? Quarter?
     start_date: date = date(year, 1, 1)
     end_date: date = start_date + timedelta(days=365)
 
-    if doctor_filter != "all":
-        results = db.execute("SELECT `date`, `doctor` FROM time_table "
-                             "WHERE `date` >= ? AND `date` <= ? AND `doctor` = ? ORDER BY `date`",
-                             (start_date.toordinal(), end_date.toordinal(), doctor_filter))\
-                    .fetchall()
-        entries = {date_ord: doctor_name for date_ord, doctor_name in results}
-        dates: list[date] = [date.fromordinal(entry) for entry in entries.keys()]
-
-    else:
+    # If all entries should be selected, get entries and fill date list with each day of the year
+    if doctor_filter == "all":
         results = db.execute("SELECT `date`, `doctor` FROM time_table "
                              "WHERE `date` >= ? AND `date` <= ?  ORDER BY `date`",
-                             (start_date.toordinal(), end_date.toordinal()))\
+                             (start_date.toordinal(), end_date.toordinal())) \
             .fetchall()
 
         entries = {date_ord: doctor_name for date_ord, doctor_name in results}
         dates: list[date] = [start_date + timedelta(days=delta) for delta in range(0, 366)]
 
+    # Otherwise get filtered entries and fill date list only with necessary days
+    else:
+        results = db.execute("SELECT `date`, `doctor` FROM time_table "
+                             "WHERE `date` >= ? AND `date` <= ? AND `doctor` = ? ORDER BY `date`",
+                             (start_date.toordinal(), end_date.toordinal(), doctor_filter)) \
+            .fetchall()
+        entries = {date_ord: doctor_name for date_ord, doctor_name in results}
+        dates: list[date] = [date.fromordinal(entry) for entry in entries.keys()]
+
+    # Render template
     return render_template("table_contents.html",
                            dates=dates,
                            entries=entries)
 
 
 @app.route('/')
-def get_year():
-    """ Displays main view. """
+def get_main():
+    """ Displays main view. Table content will be loaded via fetch from client side."""
 
     # Initialize Database
     db: sqlite3.Connection = init_db()
-
-    # Get currently viewed year
-    # year: int = request.args.get('year', default=date.today().year, type=int)
-
-    # List of all Dates in this year
-    # TODO: Quartals?
-    # dates: list[date] = [date(year, 1, 1) + timedelta(days=delta) for delta in range(0, 366)]
-
-    # Get all entries into the calendar, map them by date-ordinal for better access
-    # TODO: Incremental list?
-    # entries = {key: value for key, value in
-    #            db.execute("SELECT `date`, `doctor` FROM time_table ORDER BY `date`")
-    #            .fetchall()}
 
     # Get all registered users of the calendar
     doctors = [name[0] for name in db.execute("SELECT `last_name` FROM doctors ORDER BY `last_name`").fetchall()]
@@ -115,14 +112,20 @@ def add_entry():
 
     # Get POST data
     try:
-        current_entry: str = request.form['current_entry']
-        write_entry: str = request.form['add_name']
+        current_entry: str = request.form.get("current_entry", "", type=str)
+        write_entry: str = request.form.get("add_name", "", type=str)
         at_date: int = int(request.form.get('date', type=str)[1:])
+
     except (ValueError, KeyError, TypeError) as e:
         return escape(str(e))
 
+    if write_entry == "" or current_entry == "":
+        return "ERROR"
+
     # Try to get a calendar entry at the selected date
-    entries = db.execute("SELECT `doctor`, `id` FROM time_table WHERE `date` = ? LIMIT 1", (at_date,)).fetchone()
+    entries = db.execute("SELECT `doctor`, `id` FROM time_table "
+                         "WHERE `date` = ? LIMIT 1", (at_date,))\
+                .fetchone()
 
     if entries:
         # If there was an entry, and it differs from the client-side entry, abort function
