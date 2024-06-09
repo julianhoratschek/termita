@@ -16,8 +16,8 @@ def init_db() -> sqlite3.Connection:
     """
 
     if "db" not in g:
-        # g.db = sqlite3.connect("/var/data/database.sqlite")
-        g.db = sqlite3.connect("database.sqlite")
+        g.db = sqlite3.connect("/var/data/database.sqlite")
+        # g.db = sqlite3.connect("database.sqlite")
 
     return g.db
 
