@@ -11,7 +11,7 @@ import locale
 
 # Initialize App
 app = Flask(__name__)
-locale.setlocale(locale.LC_TIME, 'de_DE')
+# locale.setlocale(locale.LC_TIME, 'de_DE')
 
 
 def init_db() -> sqlite3.Connection:
