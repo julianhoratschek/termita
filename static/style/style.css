@@ -47,6 +47,14 @@ select {
     color: whitesmoke;
 }
 
+.empty-table {
+    visibility: hidden;
+}
+
+.empty-table:only-child {
+    visibility: visible;
+}
+
 #doctor-selection {
     visibility: hidden;
 }

@@ -7,15 +7,22 @@
 
     <tr>
         <td class="display date-column d{{ date|ord }} {{ date|weekday_class }}">{{ date|dt }}</td>
-            {% if date|ord in entries %}
-        <td class="display name-column">
+
+        {% if date|ord in entries %}
+            <td class="display name-cell">
                 {{ entries[date|ord] }}
-            {% else %}
-        <td class="display name-column not-assigned">
+            </td>
+        {% else %}
+            <td class="display name-cell not-assigned">
                 [Nicht vergeben]
-            {% endif %}
-        </td>
+            </td>
+        {% endif %}
+
 
         <td></td>
     </tr>
 {% endfor %}
+
+<tr class="empty-table">
+    <td colspan="3" class="display not-assigned">Noch keine Einträge vorhanden.</td>
+</tr>

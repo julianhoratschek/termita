@@ -102,8 +102,8 @@ def get_main():
                            doctors=doctors)
 
 
-@app.post('/add')
-def add_entry():
+@app.post('/set')
+def set_entry():
     """ Adds or overwrites an entry in the calendar. If the entry was modified in the meantime, nothing will
     happen and a warning will be returned."""
 
@@ -112,35 +112,41 @@ def add_entry():
 
     # Get POST data
     try:
-        current_entry: str = request.form.get("current_entry", "", type=str)
-        write_entry: str = request.form.get("add_name", "", type=str)
+        current_entry: str = request.form["current_entry"]
+        write_entry: str = request.form["add_name"]
         at_date: int = int(request.form.get('date', type=str)[1:])
 
     except (ValueError, KeyError, TypeError) as e:
         return escape(str(e))
 
-    if write_entry == "" or current_entry == "":
-        return "ERROR"
+    # If deletion was selected, try to delete the specified entry
+    if write_entry == "delete":
+        db.execute("DELETE FROM time_table "
+                   "WHERE `date` = ? AND `doctor` = ?",
+                   (at_date, current_entry))
 
-    # Try to get a calendar entry at the selected date
-    entries = db.execute("SELECT `doctor`, `id` FROM time_table "
-                         "WHERE `date` = ? LIMIT 1", (at_date,))\
-                .fetchone()
-
-    if entries:
-        # If there was an entry, and it differs from the client-side entry, abort function
-        if current_entry != entries[0]:
-            return escape(entries[0])
-
-        # Otherwise overwrite entry
-        db.execute("UPDATE time_table SET `doctor` = ? WHERE `id` = ?",
-                   (write_entry, entries[1]))
-
-    # If no calendar entry was present, create new entry
+    # Otherwise insert or update table
     else:
-        db.execute("INSERT INTO time_table (`date`, `doctor`) VALUES (?, ?)",
-                   (at_date, write_entry))
+        # Try to get a calendar entry at the selected date
+        entries = db.execute("SELECT `doctor`, `id` FROM time_table "
+                             "WHERE `date` = ? LIMIT 1", (at_date,))\
+                    .fetchone()
 
+        # If there was an entry, and it differs from the client-side entry, abort function
+        if entries:
+            if current_entry != entries[0]:
+                return escape(entries[0])
+
+            # Otherwise overwrite entry
+            db.execute("UPDATE time_table SET `doctor` = ? WHERE `id` = ?",
+                       (write_entry, entries[1]))
+
+        # If no calendar entry was present, create new entry
+        else:
+            db.execute("INSERT INTO time_table (`date`, `doctor`) VALUES (?, ?)",
+                       (at_date, write_entry))
+
+    # Commit changes
     db.commit()
     return escape(write_entry)
 
