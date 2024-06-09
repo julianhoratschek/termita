@@ -101,27 +101,7 @@
     </form>
 
     <table id="date-table">
-        {% for date in dates %}
-            {% if loop.previtem is not defined or loop.previtem.month != date.month %}
-                <tr>
-                    <td colspan="2" class="display month-caption">{{ date|dt("%B") }}</td>
-                </tr>
-            {% endif %}
 
-            <tr>
-                <td class="display date-column d{{ date|ord }} {{ date|weekday_class }}">{{ date|dt }}</td>
-                    {% if date|ord in entries %}
-                <td class="display name-column">
-                        {{ entries[date|ord] }}
-                    {% else %}
-                <td class="display name-column not-assigned">
-                        [Nicht vergeben]
-                    {% endif %}
-                </td>
-
-                <td></td>
-            </tr>
-        {% endfor %}
     </table>
 
     <form id="doctor-selection">
@@ -137,7 +117,7 @@
     <script type="text/javascript">
         // Setup document elements
         const doctor_select = document.getElementById("doctor-selection")
-        const doctor_filter = document.getElementById("doctor-filter")
+        const ui_bar = document.getElementById("ui-bar")
         const current_name = document.getElementById("doctor-selection-name")
         const current_date = document.getElementById("doctor-selection-date")
         const date_table = document.getElementById("date-table")
@@ -178,9 +158,9 @@
         }
 
         function load_content() {
-            let form_data = new FormData(doctor_filter)
+            let form_data = new FormData(ui_bar)
             let request = new Request("/filter", {
-                method: "post",
+                method: "POST",
                 body: form_data
             })
 
@@ -195,6 +175,10 @@
                 })
                 .then((html) => {
                     date_table.innerHTML = html
+
+                    let today = document.getElementsByClassName("today")
+                    if(today.length > 0)
+                        today[0].scrollIntoView()
                 })
         }
 
@@ -207,7 +191,7 @@
             set_doctor(event.target.value)
         })
 
-        doctor_filter.addEventListener("change", (event) => {
+        ui_bar.addEventListener("change", (event) => {
             load_content()
         })
 
@@ -231,7 +215,6 @@
             current_column.nextElementSibling.appendChild(doctor_select)
         })
 
-        document.getElementsByClassName("today")[0].scrollIntoView()
         document.getElementById("year-filter").value = new Date(Date.now()).getFullYear()
         load_content()
     </script>
