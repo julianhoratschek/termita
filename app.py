@@ -1,4 +1,5 @@
 import sqlite3
+import os
 from flask import Flask, request, render_template, g
 from markupsafe import escape
 from datetime import date, timedelta
@@ -16,13 +17,13 @@ def init_db() -> sqlite3.Connection:
     """
 
     if "db" not in g:
-        g.db = sqlite3.connect("/var/data/database.sqlite")
-        # g.db = sqlite3.connect("database.sqlite")
+        db_location: str = "/var/data/database.sqlite" if "RENDER" in os.environ else "database.sqlite"
+        g.db = sqlite3.connect(db_location)
 
     return g.db
 
 
-def get_date_entries(sql_query, params) -> dict[int, str]:
+def get_date_entries(sql_query: str, params: tuple) -> dict[int, str]:
     """Executes sql_query with params, joins all names with the same date to a string and returns
     it as a dictionary mapping date-ordinal to that string.
 
@@ -150,36 +151,32 @@ def set_entry():
 
     # Try to get a calendar entry at the selected date
     entries: list[str] = []
-    result: list = db.execute("SELECT `doctor` FROM time_table "
-                              "WHERE `date` = ? ORDER BY `doctor`", (at_date,))\
-                     .fetchall()
 
     # Abort if current database state does not match expected state
-    if result:
+    if (result := db.execute("SELECT `doctor` FROM time_table "
+                             "WHERE `date` = ? ORDER BY `doctor`", (at_date,)).fetchall()):
         entries = list(next(zip(*result)))
-
         if (match_names := ", ".join(entries)) != current_entry:
             return escape(match_names)
 
     # If deletion was selected, try to delete the specified entry
     if set_method in ("delete", "replace"):
         entries = []
-        db.execute("DELETE FROM time_table "
-                   "WHERE `date` = ?",
-                   (at_date,))
+        db.execute("DELETE FROM time_table WHERE `date` = ?", (at_date,))
 
     # If insertion was selected, insert new data
     if set_method in ("append", "replace"):
         entries.append(write_entry)
-        db.execute("INSERT INTO time_table (`date`, `doctor`) VALUES (?, ?)",
-                   (at_date, write_entry))
+        db.execute("INSERT INTO time_table (`date`, `doctor`) VALUES (?, ?)", (at_date, write_entry))
 
     # Commit changes
     db.commit()
 
+    # Return updated entries
     if entries:
         return escape(", ".join(sorted(entries)))
 
+    # This is returned, if no entry is left for this date
     return "empty"
 
 
@@ -191,8 +188,8 @@ def get_main():
     db: sqlite3.Connection = init_db()
 
     # Get all registered users of the calendar
-    doctors: list[str] = [name[0] for name in db.execute("SELECT `last_name` FROM doctors ORDER BY `last_name`")
-                                                .fetchall()]
+    doctors: list[str] = [name[0] for name
+                          in db.execute("SELECT `last_name` FROM doctors ORDER BY `last_name`").fetchall()]
 
     return render_template("time_table.html",
                            doctors=doctors)
