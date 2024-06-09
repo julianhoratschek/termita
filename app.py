@@ -3,42 +3,73 @@ from flask import Flask, request, render_template, g
 from markupsafe import escape
 from datetime import date, timedelta
 from itertools import groupby
-import locale
 
-# TODO: Terminalternativen
+# TODO: "empty"
+# TODO: Deutsch
 # TODO: Feiertage
 
 
 # Initialize App
 app = Flask(__name__)
-# locale.setlocale(locale.LC_TIME, 'de_DE')
 
 
 def init_db() -> sqlite3.Connection:
-    """ Initialize the database. """
+    """ Initialize the database.
+    """
+
     if "db" not in g:
-        g.db = sqlite3.connect("/var/data/database.sqlite")
+        # g.db = sqlite3.connect("/var/data/database.sqlite")
+        g.db = sqlite3.connect("database.sqlite")
 
     return g.db
 
 
 def get_date_entries(sql_query, params) -> dict[int, str]:
+    """Executes sql_query with params, joins all names with the same date to a string and returns
+    it as a dictionary mapping date-ordinal to that string.
+
+    :param sql_query: SQL query to execute, expects a SELECT-query.
+    :param params: Parameters to pass to sql_query.
+    :return: Dictionary mapping gregorian date-ordinals to a string.
+    """
+
     return {date_ord: ", ".join(list(zip(*doctor_names))[1]) for date_ord, doctor_names
             in groupby(g.db.execute(sql_query, params).fetchall(), lambda x: x[0])}
 
 
 @app.teardown_appcontext
 def close_db(error):
-    """ Close the database again at the end of the request. """
+    """ Close the database again at the end of the request.
+    """
+
     if "db" in g:
         g.db.close()
         g.db = None
 
 
+@app.template_filter("month")
+def date_month(value: date) -> str:
+    """Jinja template filter to convert date to german month name.
+    Workaround for missing locale-settings on Server.
+    :param value: date to convert.
+    :return: String representation german month name.
+    """
+
+    return ("Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
+            "August", "September", "Oktober", "November", "Dezember")[value.month - 1]
+
+
 @app.template_filter("dt")
-def date_to_string(value: date, date_format: str = "%a, %d. %B") -> str:
-    """ Jinja template filter to convert a date to a string. """
-    return value.strftime(date_format)
+def date_to_string(value: date) -> str:
+    """ Jinja template filter to convert a date to a german date representation.
+    Workaround for missing locale-settings on Server.
+    :param value: date to convert.
+    :return: String representation of german date format.
+    """
+
+    return (("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")[value.weekday()] + ", "
+            + f"{value.day:02d}. "
+            + date_month(value))
 
 
 @app.template_filter("ord")

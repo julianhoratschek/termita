@@ -1,16 +1,18 @@
 {% for date in dates %}
     {% if loop.previtem is not defined or loop.previtem.month != date.month %}
         <tr>
-            <td colspan="2" class="display month-caption">{{ date|dt("%B") }}</td>
+            <td colspan="2" class="display month-caption">{{ date|month }}</td>
         </tr>
     {% endif %}
 
     <tr>
-        <td class="display date-column d{{ date|ord }} {{ date|weekday_class }}">{{ date|dt }}</td>
+        {% set date_value = date|ord %}
 
-        {% if date|ord in entries %}
-            <td class="display name-cell{% if "," in entries[date|ord] %} multiple-entries{% endif %}">
-                {{ entries[date|ord] }}
+        <td class="display date-column d{{ date_value }} {{ date|weekday_class }}">{{ date|dt }}</td>
+
+        {% if date_value in entries %}
+            <td class="display name-cell{% if "," in entries[date_value] %} multiple-entries{% endif %}">
+                {{ entries[date_value] }}
             </td>
         {% else %}
             <td class="display name-cell not-assigned">
