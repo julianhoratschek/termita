@@ -46,6 +46,35 @@ def get_weekday_class(value: date) -> str:
     }.get(value.weekday(), "weekday") + (" today" if value == date.today() else "")
 
 
+@app.post('/filter')
+def get_filter():
+    db: sqlite3.Connection = init_db()
+
+    year: int = request.form.get("year", default=date.today().year, type=int)
+    doctor_filter: str = request.form.get("filter_name", default="*", type=str)
+
+    query_sql: str = "SELECT `date`, `doctor` FROM time_table WHERE `date` >= ? AND `date` <= ?"
+
+    start_date: date = date(year, 1, 1)
+
+    if doctor_filter != "all":
+        dates: list[date] = [start_date, start_date + timedelta(days=365)]
+
+    else:
+        query_sql += " AND `doctor` = ?"
+        dates: list[date] = [start_date + timedelta(days=delta) for delta in range(0, 366)]
+
+    query_sql += " ORDER BY `date`"
+
+    entries = {date_ord: doctor_name for date_ord, doctor_name in
+               db.execute(query_sql, (start_date, dates[-1], doctor_filter,))
+               .fetchall()}
+
+    return render_template("table_contents.html",
+                           dates=dates,
+                           entries=entries)
+
+
 @app.route('/')
 def get_year():
     """ Displays main view. """

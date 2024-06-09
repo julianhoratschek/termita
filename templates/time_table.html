@@ -5,6 +5,15 @@
     <title>Title</title>
 
     <style>
+        select {
+            height: 48px;
+            width: 250px;
+            background-color: whitesmoke;
+            border: 2px solid #797979;
+
+            text-align: center;
+        }
+
         #date-table td.display {
             height: 48px;
             width: 50%;
@@ -45,26 +54,50 @@
             color: whitesmoke;
         }
 
-        #doctor-selection select {
-            height: 48px;
-            width: 250px;
-            background-color: whitesmoke;
-            border: 2px solid #797979;
+        #doctor-selection {
+            visibility: hidden;
+        }
 
-            text-align: center;
+        td #doctor-selection {
+            visibility: visible;
+        }
+
+        #ui-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+
+            opacity: 0.8;
+            background-color: lightsteelblue;
+
+            padding: 20px;
+
         }
 
     </style>
 </head>
 <body>
-    <form id="doctor-selection">
-        <select id="doctor-selection-name" name="add_name">
-                <option value="none">Auswählen</option>
+    <form id="ui-bar">
+        <label for="doctor-filter">Dienste anzeigen für:</label>
+        <select id="doctor-filter" name="filter_name">
+            <option value="all">Alle</option>
             {% for doctor in doctors %}
                 <option value="{{ doctor|e }}">{{ doctor|e }}</option>
             {% endfor %}
         </select>
-        <input id="doctor-selection-date" name="date" value="" type="hidden" />
+
+        <label for="year-filter">Zeige Jahr:</label>
+        <select id="year-filter" name="year">
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+            <option value="2029">2029</option>
+            <option value="2030">2030</option>
+        </select>
     </form>
 
     <table id="date-table">
@@ -91,16 +124,34 @@
         {% endfor %}
     </table>
 
+    <form id="doctor-selection">
+        <select id="doctor-selection-name" name="add_name">
+                <option value="none">Auswählen</option>
+            {% for doctor in doctors %}
+                <option value="{{ doctor|e }}">{{ doctor|e }}</option>
+            {% endfor %}
+        </select>
+        <input id="doctor-selection-date" name="date" value="" type="hidden" />
+    </form>
+
     <script type="text/javascript">
+        // Setup document elements
         const doctor_select = document.getElementById("doctor-selection")
+        const doctor_filter = document.getElementById("doctor-filter")
         const current_name = document.getElementById("doctor-selection-name")
         const current_date = document.getElementById("doctor-selection-date")
+        const date_table = document.getElementById("date-table")
+
+        // Setup mutable elements
         let current_column = null
 
+        // Send from data from "doctor-selection" and updates database
         function set_doctor(doctor_name) {
+            // Ensure we keep working on the same cell
             let local_column = current_column
             let form_data = new FormData(doctor_select)
 
+            // Append the content we expect to override.
             form_data.set("current_entry", local_column.innerText)
 
             let request = new Request("add", {
@@ -115,6 +166,7 @@
                     return response.text()
                 })
                 .then((response) => {
+                    // If we get another name back, the cell was edited by someone else before our send-reqeust
                     if(response !== doctor_name)
                         local_column.classList.add("revisit")
                     else
@@ -125,6 +177,29 @@
                 })
         }
 
+        function load_content() {
+            let form_data = new FormData(doctor_filter)
+            let request = new Request("/filter", {
+                method: "post",
+                body: form_data
+            })
+
+            // Rescue "doctor-select" form from deletion
+            document.body.appendChild(doctor_select)
+
+            fetch(request)
+                .then((response) => {
+                    if(!response.ok)
+                        throw new Error("Could not load data")
+                    return response.text()
+                })
+                .then((html) => {
+                    date_table.innerHTML = html
+                })
+        }
+
+        // Set bubbling Event-Listeners
+
         doctor_select.addEventListener("change", (event) => {
             if(!current_column || event.target.value === "none")
                 return
@@ -132,22 +207,33 @@
             set_doctor(event.target.value)
         })
 
+        doctor_filter.addEventListener("change", (event) => {
+            load_content()
+        })
+
         addEventListener("dblclick", (event) => {
-            if(event.target.classList.contains("name-column")) {
-                current_column = event.target
+            // Only react to clicks on specific cells (name-cells)
+            if(!event.target.classList.contains("name-column"))
+                return
 
-                current_date.value = current_column.previousElementSibling.classList[2]
-                
-                if(current_column.classList.contains("not-assigned") && current_name.value !== "none")
-                    set_doctor(current_name.value)
-                else
-                    current_name.value = "none"
+            current_column = event.target
+            current_date.value = current_column.previousElementSibling.classList[2]
 
-                current_column.nextElementSibling.appendChild(doctor_select)
-            }
+            // If nothing is assigned to this cell, update using the last selected name
+            if(current_column.classList.contains("not-assigned") && current_name.value !== "none")
+                set_doctor(current_name.value)
+
+            // Otherwise reset select-element
+            else
+                current_name.value = "none"
+
+            // Display "doctor-selection" form next to the selected cell
+            current_column.nextElementSibling.appendChild(doctor_select)
         })
 
         document.getElementsByClassName("today")[0].scrollIntoView()
+        document.getElementById("year-filter").value = new Date(Date.now()).getFullYear()
+        load_content()
     </script>
 </body>
 

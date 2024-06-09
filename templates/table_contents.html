@@ -1,0 +1,21 @@
+{% for date in dates %}
+    {% if loop.previtem is not defined or loop.previtem.month != date.month %}
+        <tr>
+            <td colspan="2" class="display month-caption">{{ date|dt("%B") }}</td>
+        </tr>
+    {% endif %}
+
+    <tr>
+        <td class="display date-column d{{ date|ord }} {{ date|weekday_class }}">{{ date|dt }}</td>
+            {% if date|ord in entries %}
+        <td class="display name-column">
+                {{ entries[date|ord] }}
+            {% else %}
+        <td class="display name-column not-assigned">
+                [Nicht vergeben]
+            {% endif %}
+        </td>
+
+        <td></td>
+    </tr>
+{% endfor %}
