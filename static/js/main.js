@@ -14,7 +14,10 @@ let current_column = null
  * Send from data from "doctor-selection" and updates database
  */
 function set_doctor(set_method="append") {
-    // TODO: multiple-entries: remove and append
+    // Don't make API call if current name is already set
+    if(current_column.innerText.includes(current_name.value))
+        return
+
     // Ensure we keep working on the same cell
     const local_column = current_column
     const form_data = new FormData(doctor_select)
@@ -37,7 +40,7 @@ function set_doctor(set_method="append") {
         })
 
         .then((response) => {
-            local_column.classList.remove("not-assigned", "revisit", "changed")
+            local_column.classList.remove("not-assigned", "revisit", "changed", "multiple-entries")
 
             // Display correct text when entry was deleted
             if(response === "empty") {
@@ -96,7 +99,7 @@ function load_content() {
  */
 function on_cell_click(event) {
 
-    // Don't do anything, if no name-cell was selected
+    // Don't do anything, if no name-cell was selected or the name is already present in the cell
     if(!event.target.classList.contains("name-cell"))
         return
 
