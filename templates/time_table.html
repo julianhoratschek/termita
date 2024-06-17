@@ -38,8 +38,8 @@
     <br />
     <br />
 
-    <form id="doctor-selection">
-        <select id="doctor-selection-name" name="add_name">
+    <form id="doctor-selection-form">
+        <select id="doctor-name-select">
                 <option value="none">Auswählen</option>
                 <option value="delete">[Termin löschen]</option>
             {% for doctor in doctors %}
@@ -53,6 +53,16 @@
             <p>Der Termin ist bereits vergeben, wie soll vorgegangen werden?</p>
             <button value="replace">Ersetzen</button>
             <button value="append">Hinzufügen</button>
+            <button value="cancel" autofocus>Abbrechen</button>
+        </form>
+    </dialog>
+
+    <dialog id="remove-from-group-dialog">
+        <form method="dialog">
+            <p>Wer soll von dem Termin entfernt werden?</p>
+            <select id="remove-name-select">
+
+            </select>
             <button value="cancel" autofocus>Abbrechen</button>
         </form>
     </dialog>

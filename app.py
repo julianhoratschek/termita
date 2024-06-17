@@ -6,6 +6,8 @@ from datetime import date, timedelta
 from itertools import groupby
 
 # TODO: Feiertage
+# TODO: Einzelne Entfernen
+# TODO: Anmeldung
 
 
 # Initialize App
@@ -141,10 +143,10 @@ def set_entry():
 
     # Get POST data
     try:
-        current_entry: str = request.form["current_entry"]
-        write_entry: str = request.form["add_name"]
-        set_method: str = request.form["set_method"]
-        at_date: int = int(request.form["date"][1:])
+        current_entry: str = request.form["current_entry"]  # Entry in cell at request time
+        write_entry: str = request.form["add_name"]         # Name to append, replace content with or to delete
+        set_method: str = request.form["set_method"]        # "append", "delete" or "replace"
+        at_date: int = int(request.form["date"][1:])        # Date as ordinal to identify cell
 
     except (ValueError, KeyError) as e:
         return escape(str(e))
@@ -159,13 +161,17 @@ def set_entry():
         if (match_names := ", ".join(entries)) != current_entry:
             return escape(match_names)
 
-    # If deletion was selected, try to delete the specified entry
-    if set_method in ("delete", "replace"):
-        entries = []
-        db.execute("DELETE FROM time_table WHERE `date` = ?", (at_date,))
+    if set_method == "delete":
+        print(write_entry)
+        entries.remove(write_entry)
+        db.execute("DELETE FROM time_table WHERE `date` = ? and `doctor` = ?", (at_date, write_entry))
 
-    # If insertion was selected, insert new data
-    if set_method in ("append", "replace"):
+    # If deletion was selected, try to delete the specified entry
+    elif set_method in ("append", "replace"):
+        if set_method == "replace":
+            entries = []
+            db.execute("DELETE FROM time_table WHERE `date` = ?", (at_date,))
+
         entries.append(write_entry)
         db.execute("INSERT INTO time_table (`date`, `doctor`) VALUES (?, ?)", (at_date, write_entry))
 

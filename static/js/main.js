@@ -1,9 +1,11 @@
 // Setup document elements
-const doctor_select = document.getElementById("doctor-selection")
+const doctor_select = document.getElementById("doctor-selection-form")
 const ui_bar = document.getElementById("ui-bar")
-const current_name = document.getElementById("doctor-selection-name")
+const current_name = document.getElementById("doctor-name-select")
 
 const replace_dialog = document.getElementById("replace-dialog")
+const delete_dialog = document.getElementById("remove-from-group-dialog")
+const delete_name_select = document.getElementById("remove-name-select")
 const date_table = document.getElementById("date-table")
 
 // Setup mutable elements
@@ -12,17 +14,22 @@ let current_column = null
 
 /**
  * Send from data from "doctor-selection" and updates database
+ * @param set_method - One of three values: "append", "replace", "delete"
+ * @param set_name - if set_method is "append": The name to append to cell content. If set_method is "replace": The
+ *                      name to replace cell content with. If set_method is "delete": The name to delete from cell
+ *                      content.
  */
-function set_doctor(set_method="append") {
+function set_doctor(set_method="append", set_name = "") {
     // Don't make API call if current name is already set
-    if(current_column.innerText.includes(current_name.value))
+    if(set_method !== "delete" && current_column.textContent.includes(set_name))
         return
 
     // Ensure we keep working on the same cell
     const local_column = current_column
-    const form_data = new FormData(doctor_select)
+    const form_data = new FormData()
 
     // Append the content we expect to override.
+    form_data.set("add_name", set_name)
     form_data.set("date", local_column.previousElementSibling.classList[2])
     form_data.set("current_entry", local_column.innerText)
     form_data.set("set_method", set_method)
@@ -56,7 +63,7 @@ function set_doctor(set_method="append") {
             else
                 local_column.classList.add("changed")
 
-            local_column.innerText = response
+            local_column.innerHTML = response
         })
 }
 
@@ -110,7 +117,7 @@ function on_cell_click(event) {
     if (current_column.classList.contains("not-assigned")
         && current_name.value !== "none"
         && current_name.value !== "delete")
-        set_doctor("replace")
+        set_doctor("replace", current_name.value)
 
     // Otherwise reset select-element
     else
@@ -135,12 +142,31 @@ doctor_select.addEventListener("change", (event) => {
 
     // If nothing was assigned before, fill in the selected name
     if(current_column.classList.contains("not-assigned"))
-        set_doctor("replace")
+        set_doctor("replace", current_name.value)
 
     // Send delete-Request
-    else if(event.target.value === "delete")
-        set_doctor("delete")
+    else if(event.target.value === "delete") {
+        if(current_column.innerText.includes(",")) {
+            let options = [document.createElement("option")]
+            options[0].text = "[Abbrechen]"
+            options[0].value = "abort"
 
+            current_column.innerText.split(", ").forEach((e) => {
+                let option = document.createElement("option")
+                option.value = e
+                option.text = e
+
+                options.push(option)
+            })
+            delete_name_select.replaceChildren(...options)
+            delete_name_select.value = "abort"
+
+            delete_dialog.showModal()
+        }
+        else
+            set_doctor("delete", current_column.innerText)
+
+    }
     // If something was assigned to the current date, prompt user to inquire further action
     else
         replace_dialog.showModal()
@@ -159,10 +185,18 @@ replace_dialog.addEventListener("close", (event) => {
 
     // Only act if a valid option was supplied
     if(["replace", "append"].includes(replace_dialog.returnValue))
-        set_doctor(replace_dialog.returnValue)
+        set_doctor(replace_dialog.returnValue, current_name.value)
 
     // Reset Dialog for next use
     replace_dialog.returnValue = ""
+})
+
+
+delete_name_select.addEventListener("change", (event) => {
+    if(event.target.value !== "abort")
+        set_doctor("delete", event.target.value)
+
+    delete_dialog.close()
 })
 
 
