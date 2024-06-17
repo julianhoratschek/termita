@@ -6,7 +6,6 @@ from datetime import date, timedelta
 from itertools import groupby
 
 # TODO: Feiertage
-# TODO: Einzelne Entfernen
 # TODO: Anmeldung
 
 
@@ -83,7 +82,7 @@ def date_to_ord(value: date) -> int:
 
 @app.template_filter("weekday_class")
 def get_weekday_class(value: date) -> str:
-    """ Jinja template filter to generate a class list: returns saturday, sunday or weekday with additional
+    """Jinja template filter to generate a class list: returns saturday, sunday or weekday with additional
      today-class if value is today."""
     return {
         5: "saturday",
@@ -161,17 +160,20 @@ def set_entry():
         if (match_names := ", ".join(entries)) != current_entry:
             return escape(match_names)
 
+    # If deletion was selected, try to delete the specified entry
     if set_method == "delete":
-        print(write_entry)
         entries.remove(write_entry)
         db.execute("DELETE FROM time_table WHERE `date` = ? and `doctor` = ?", (at_date, write_entry))
 
-    # If deletion was selected, try to delete the specified entry
+    # Otherwise replace or append an entry
     elif set_method in ("append", "replace"):
+
+        # When replacing an entry, remove all other entries at that date
         if set_method == "replace":
             entries = []
             db.execute("DELETE FROM time_table WHERE `date` = ?", (at_date,))
 
+        # Add the new entry to the database
         entries.append(write_entry)
         db.execute("INSERT INTO time_table (`date`, `doctor`) VALUES (?, ?)", (at_date, write_entry))
 

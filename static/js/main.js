@@ -1,5 +1,5 @@
 // Setup document elements
-const doctor_select = document.getElementById("doctor-selection-form")
+const doctor_select_form = document.getElementById("doctor-selection-form")
 const ui_bar = document.getElementById("ui-bar")
 const current_name = document.getElementById("doctor-name-select")
 
@@ -20,9 +20,13 @@ let current_column = null
  *                      content.
  */
 function set_doctor(set_method="append", set_name = "") {
-    // Don't make API call if current name is already set
-    if(set_method !== "delete" && current_column.textContent.includes(set_name))
-        return
+    // Don't make API call if current name is already set and should not be deleted
+    if(current_column.textContent.includes(set_name)) {
+        if(set_method === "append")
+            return
+    }
+    else if(set_method === "delete")
+            return
 
     // Ensure we keep working on the same cell
     const local_column = current_column
@@ -47,6 +51,8 @@ function set_doctor(set_method="append", set_name = "") {
         })
 
         .then((response) => {
+
+            // Remove all classes
             local_column.classList.remove("not-assigned", "revisit", "changed", "multiple-entries")
 
             // Display correct text when entry was deleted
@@ -80,7 +86,7 @@ function load_content() {
     })
 
     // Rescue "doctor-select" form from deletion
-    document.body.appendChild(doctor_select)
+    document.body.appendChild(doctor_select_form)
 
     fetch(request)
         .then((response) => {
@@ -124,7 +130,7 @@ function on_cell_click(event) {
         current_name.value = "none"
 
     // Display "doctor-selection" form next to the selected cell
-    current_column.nextElementSibling.appendChild(doctor_select)
+    current_column.nextElementSibling.appendChild(doctor_select_form)
 }
 
 
@@ -134,7 +140,7 @@ function on_cell_click(event) {
 
 
 // Listen for Changes on Doctor-Select
-doctor_select.addEventListener("change", (event) => {
+doctor_select_form.addEventListener("change", (event) => {
 
     // Don't act if nothing is selected
     if(!current_column || event.target.value === "none")
@@ -142,15 +148,18 @@ doctor_select.addEventListener("change", (event) => {
 
     // If nothing was assigned before, fill in the selected name
     if(current_column.classList.contains("not-assigned"))
-        set_doctor("replace", current_name.value)
+        set_doctor("append", current_name.value)
 
     // Send delete-Request
     else if(event.target.value === "delete") {
+
+        // Test if there is more than one name assigned
         if(current_column.innerText.includes(",")) {
             let options = [document.createElement("option")]
-            options[0].text = "[Abbrechen]"
-            options[0].value = "abort"
+            options[0].value = "none"
+            options[0].text = "Auswählen"
 
+            // Create Options to select for deletion
             current_column.innerText.split(", ").forEach((e) => {
                 let option = document.createElement("option")
                 option.value = e
@@ -158,15 +167,19 @@ doctor_select.addEventListener("change", (event) => {
 
                 options.push(option)
             })
-            delete_name_select.replaceChildren(...options)
-            delete_name_select.value = "abort"
 
+            // Update options and show dialog
+            delete_name_select.replaceChildren(...options)
+            delete_name_select.value = "none"
             delete_dialog.showModal()
         }
+
+        // If only one name is present, delete it directly
         else
             set_doctor("delete", current_column.innerText)
 
     }
+
     // If something was assigned to the current date, prompt user to inquire further action
     else
         replace_dialog.showModal()
@@ -193,7 +206,7 @@ replace_dialog.addEventListener("close", (event) => {
 
 
 delete_name_select.addEventListener("change", (event) => {
-    if(event.target.value !== "abort")
+    if(event.target.value !== "none")
         set_doctor("delete", event.target.value)
 
     delete_dialog.close()

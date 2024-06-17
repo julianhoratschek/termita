@@ -60,11 +60,11 @@ select {
     visibility: visible;
 }
 
-#doctor-selection {
+#doctor-selection-form {
     visibility: hidden;
 }
 
-td #doctor-selection {
+td #doctor-selection-form {
     visibility: visible;
 }
 
@@ -82,12 +82,13 @@ td #doctor-selection {
 
 }
 
-#replace-dialog p {
+dialog p {
     text-align: center;
 }
 
-#replace-dialog button {
+dialog button {
     width: 200px;
     height: 48px;
     background-color: whitesmoke;
+    margin-top: 12px;
 }
